@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🎉 Memory Party — Cumple</title>
+  <meta name="description" content="Minijuego de parejas para desbloquear una sorpresa de cumpleaños" />
+  <style>
+    /* =====================================================
+       🔧 VARIABLES (personaliza colores/estética)
+       ===================================================== */
+    :root{
+      --bg1:#fff7f3;            /* fondo degradado */
+      --bg2:#f3f7ff;
+      --text:#1f2937;           /* texto principal */
+      --muted:#64748b;          /* texto secundario */
+      --primary:#ff5a87;        /* botones */
+      --primary-600:#e34a75;    /* hover */
+      --accent:#6ee7b7;         /* acentos */
+      --card:#ffffff;           /* cartas y modales */
+      --shadow:0 18px 50px rgba(0,0,0,.10);
+      --radius:18px;            /* redondeos */
+    }
+
+    /* =====================================================
+       🧱 RESETEO BÁSICO + TIPOGRAFÍA
+       ===================================================== */
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+                   "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background:linear-gradient(160deg,var(--bg1),var(--bg2));
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    .no-scroll{overflow:hidden}
+
+    /* =====================================================
+       🌟 LAYOUT
+       ===================================================== */
+    .wrap{max-width:1020px;margin:0 auto;padding:clamp(16px,3.5vw,36px)}
+    header{display:grid;gap:8px;place-items:center;text-align:center;margin-bottom:clamp(12px,2.8vw,22px)}
+    h1{margin:0;font-size:clamp(1.6rem,5vw,2.6rem)}
+    .subtitle{margin:0;color:var(--muted);font-size:clamp(.95rem,2.8vw,1.05rem)}
+
+    /* =====================================================
+       🎮 TABLERO
+       ===================================================== */
+    .board{
+      display:grid;
+      gap:clamp(10px,2.6vw,16px);
+      justify-content:center;
+    }
+    /* Las columnas se definen en línea para que sean reactivas al tamaño */
+
+    .hud{
+      display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;
+      margin: 14px 0 18px;
+    }
+    .stat{background:#fff;border:1px solid #eef2f7;padding:8px 12px;border-radius:999px;color:#0f172a;box-shadow:var(--shadow);font-weight:700}
+
+    .card{
+      width:min(22vw,120px); height:min(22vw,120px);
+      max-width:140px; max-height:140px; min-width:78px; min-height:78px;
+      perspective:1000px;
+    }
+    .face{
+      position:relative; width:100%; height:100%;
+      border-radius:16px; box-shadow:var(--shadow); cursor:pointer;
+      transform-style:preserve-3d; transition:transform .32s ease;
+      background:var(--card);
+      outline:none; border:none; display:block;
+    }
+    .face.is-flipped{ transform: rotateY(180deg); }
+
+    .front,.back{
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      backface-visibility:hidden; border-radius:inherit; overflow:hidden;
+    }
+    .front{ background:linear-gradient(160deg,#ffdde8,#e0f7ff); border:1px solid #f1f5f9; }
+    .front .dot{ width:10px; height:10px; background:#ff8fb1; border-radius:999px; box-shadow:0 0 0 6px rgba(255,138,177,.15), 0 0 0 12px rgba(255,138,177,.08); }
+
+    .back{ transform: rotateY(180deg); background:#000; }
+    .back img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+    .btn{ appearance:none; border:none; cursor:pointer; font-weight:800; letter-spacing:.2px; color:#fff; background:var(--primary); padding:12px 18px; border-radius:999px; box-shadow:0 14px 30px rgba(255,90,135,.25); transition:transform .06s ease, background .2s ease; }
+    .btn:hover{ background:var(--primary-600)}
+    .btn:active{ transform:translateY(1px) scale(.99) }
+    .btn.secondary{ background:#10b981; box-shadow:0 14px 30px rgba(16,185,129,.2) }
+
+    /* =====================================================
+       🪟 MODALES ACCESIBLES
+       ===================================================== */
+    .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; padding:20px; z-index:60 }
+    .modal.open{ display:flex }
+    .backdrop{ position:absolute; inset:0; background:rgba(2,6,23,.55); backdrop-filter:blur(2px); animation:fadeIn .15s ease-out }
+    .dialog{ position:relative; z-index:1; width:min(1200px,100%); max-height:100dvh; overflow:auto; background:#fff; border-radius:var(--radius); box-shadow:0 25px 60px rgba(0,0,0,.25); animation:popIn .18s ease-out }
+    .dialog header{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #eef2f7 }
+    .dialog h2{ margin:0; font-size:clamp(1.2rem,3.2vw,1.45rem) }
+    .dialog .content{ padding:16px }
+    .close-btn{ background:transparent; border:none; font-size:1.4rem; line-height:1; padding:8px; border-radius:8px; cursor:pointer }
+    .close-btn:focus{ outline:3px solid #fde68a }
+
+    .ratio{ position:relative; width:100%; aspect-ratio:16/9; background:#000; border-radius:12px; overflow:hidden }
+    .ratio video{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover }
+
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes popIn{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
+
+    /* =====================================================
+       🎊 CONFETI LIGERO
+       ===================================================== */
+    .confetti-piece{ position:fixed; width:8px; height:14px; top:-14px; will-change:transform,opacity; pointer-events:none; z-index:80 }
+
+    /* Foco visible */
+    .face:focus-visible,.btn:focus-visible{ outline:3px solid #a5b4fc; outline-offset:2px }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🎉 ¡Feliz cumpleaños, <span id="nombre">María</span>!</h1>
+      <p class="subtitle">Encuentra todas las parejas para desbloquear tu sorpresa 🎁</p>
+    </header>
+
+    <div class="hud">
+      <span class="stat">Movimientos: <strong id="moves">0</strong></span>
+      <span class="stat">Tiempo: <strong id="time">00:00</strong></span>
+      <button class="btn" id="restart">Reiniciar</button>
+    </div>
+
+    <section aria-label="Tablero" class="board" id="board" role="grid"></section>
+  </div>
+
+  <!-- Modal final: felicitación + botón de video -->
+  <div class="modal" id="win-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="win-title">
+    <div class="backdrop" data-close="win"></div>
+    <div class="dialog" role="document">
+      <header>
+        <h2 id="win-title">🎁 ¡Sorpresa desbloqueada!</h2>
+        <button class="close-btn" aria-label="Cerrar" data-close="win">✕</button>
+      </header>
+      <div class="content">
+        <p style="font-size:1.05rem; line-height:1.5">
+          <strong>¡Feliz cumpleaños, <span id="nombre2">María</span>! 🥳</strong><br/>
+          Completaste el minijuego de parejas. Toca el botón para ver tu video sorpresa.
+        </p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:8px">
+          <button class="btn secondary" id="btn-open-video">Ver video 🎬</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de video -->
+  <div class="modal" id="video-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="video-title">
+    <div class="backdrop" data-close="video"></div>
+    <div class="dialog" role="document">
+      <header>
+        <h2 id="video-title">🎬 Video sorpresa</h2>
+        <button class="close-btn" aria-label="Cerrar" data-close="video">✕</button>
+      </header>
+      <div class="content">
+        <div class="ratio">
+          <!-- ▶️ Reproductor local MP4 -->
+          <video id="localVideo" controls playsinline preload="metadata"></video>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =====================================================
+       🧩 CONFIGURACIÓN (EDITA AQUÍ)
+       -----------------------------------------------------
+       - NOMBRE_DESTINO: se muestra en cabecera y modal.
+       - IMAGES: lista de rutas/URLs. El juego crea parejas automáticamente.
+       - GRID/ROWS: tamaño del tablero.
+       - VIDEO_SRC: ruta del MP4 local (por ejemplo en /img/).
+       ===================================================== */
+    const NOMBRE_DESTINO = 'María';
+    const GRID = 3; // columnas
+    const ROWS = 4; // filas
+
+    const IMAGES = [
+      'img/los_tres.jpg','img/meg_sandra.jpg','img/Sandra_Alvaro1.jpg','img/Sandra_yo.jpg','img/todos.jpg', 'img/mama_sandra.jpg'
+    ];
+
+    // ⬇️ Nuevo: vídeo local en lugar de YouTube
+    const VIDEO_SRC = 'img/videoSandra.mp4'; // cambia a tu archivo exacto
+
+    /* =====================================================
+       🛠️ HELPERS
+       ===================================================== */
+    const $ = (s, el=document) => el.querySelector(s);
+    const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
+
+    // Confeti ligero
+    function confetti({ count=150, spread=120, duration=1400 }={}){
+      const colors = ['#fca5a5','#fdba74','#fde68a','#bbf7d0','#a7f3d0','#bae6fd','#c7d2fe','#f5d0fe'];
+      const frag = document.createDocumentFragment();
+      const vw = Math.max(document.documentElement.clientWidth, window.innerWidth||0);
+      for(let i=0;i<count;i++){
+        const piece = document.createElement('div');
+        piece.className='confetti-piece';
+        const left = Math.random()*vw;
+        const rot = Math.random()*360; const size = 6+Math.random()*8; const fall = duration+Math.random()*800;
+        const drift = (Math.random()-.5)*spread;
+        piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+        piece.style.width = size+'px'; piece.style.height = (size*1.6)+'px';
+        piece.style.left = left+'px'; piece.style.transform = `translate3d(0,-60px,0) rotate(${rot}deg)`;
+        piece.style.transition = `transform ${fall}ms cubic-bezier(.29,.61,.44,1), opacity ${fall}ms linear`;
+        requestAnimationFrame(()=>{
+          piece.style.transform = `translate3d(${drift}px,110vh,0) rotate(${rot+720}deg)`; piece.style.opacity='0.9';
+        });
+        frag.appendChild(piece); setTimeout(()=>piece.remove(), fall+140);
+      }
+      document.body.appendChild(frag);
+    }
+
+    // Modal accesible con trap de foco
+    const Modal = (()=>{
+      let lastOpener=null;
+      function trap(modal){
+        const f = $$('button,[href],input,[tabindex]:not([tabindex="-1"])', modal).filter(x=>!x.disabled && x.offsetParent!==null);
+        const first=f[0], last=f[f.length-1];
+        function onKey(e){
+          if(e.key==='Tab'){
+            if(e.shiftKey && document.activeElement===first){e.preventDefault();last.focus();}
+            else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();}
+          }
+          if(e.key==='Escape'){ close(modal.id); }
+        }
+        modal._focusHandler=onKey; modal.addEventListener('keydown', onKey);
+        if(first) first.focus({preventScroll:true});
+      }
+      function open(id, opener){
+        const m = document.getElementById(id); if(!m) return;
+        lastOpener = opener || document.activeElement;
+        m.classList.add('open'); m.setAttribute('aria-hidden','false'); document.body.classList.add('no-scroll'); trap(m);
+      }
+      function close(id){
+        const m = document.getElementById(id); if(!m) return;
+        m.classList.remove('open'); m.setAttribute('aria-hidden','true'); document.body.classList.remove('no-scroll');
+        if(m._focusHandler) m.removeEventListener('keydown', m._focusHandler);
+        if(lastOpener && lastOpener.focus) lastOpener.focus({preventScroll:true});
+      }
+      document.addEventListener('click', (e)=>{
+        const t=e.target; if(t.matches('.backdrop[data-close]')) close(t.getAttribute('data-close')+'-modal');
+        if(t.matches('[data-close]') && !t.classList.contains('backdrop')) close(t.getAttribute('data-close')+'-modal');
+      });
+      return{open,close};
+    })();
+
+    /* =====================================================
+       🎮 LÓGICA DEL JUEGO
+       ===================================================== */
+    const board = $('#board');
+    const movesEl = $('#moves');
+    const timeEl = $('#time');
+    const restartBtn = $('#restart');
+
+    let deck = []; let first=null, second=null; let lock=false; let matches=0; let moves=0; let timer=null; let seconds=0;
+
+    function mmss(s){ const m=Math.floor(s/60).toString().padStart(2,'0'); const r=(s%60).toString().padStart(2,'0'); return `${m}:${r}`; }
+
+    function startTimer(){ if(timer) return; timer=setInterval(()=>{ seconds++; timeEl.textContent=mmss(seconds); },1000); }
+    function stopTimer(){ clearInterval(timer); timer=null; }
+    function resetStats(){ matches=0; moves=0; seconds=0; movesEl.textContent=moves; timeEl.textContent='00:00'; stopTimer(); }
+
+    function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+    function buildDeck(){
+      const totalPairs = Math.floor((GRID * ROWS) / 2);
+      // Repetimos el array de imágenes hasta tener suficientes para cubrir totalPairs
+      let pool = [];
+      while (pool.length < totalPairs) {
+        pool = pool.concat(IMAGES);
+      }
+      const selected = pool.slice(0, totalPairs); // exactamente las parejas necesarias (puede reutilizar alguna)
+      const doubled = [...selected, ...selected].map((src, i)=>({ id:i, src, key:src+Math.random() }));
+      return shuffle(doubled);
+    }
+
+    function renderBoard(){
+      deck = buildDeck();
+      board.style.gridTemplateColumns = `repeat(${GRID}, minmax(78px, 1fr))`; // 3 columnas fijas por config
+      board.innerHTML='';
+      deck.forEach((card, i)=>{
+        const cell = document.createElement('div'); cell.className='card'; cell.role='gridcell';
+        const btn = document.createElement('button'); btn.className='face'; btn.type='button'; btn.setAttribute('aria-pressed','false'); btn.dataset.index=i;
+        btn.innerHTML = `
+          <div class="front"><span class="dot" aria-hidden="true"></span></div>
+          <div class="back"><img alt="Imagen del juego" src="${card.src}"></div>
+        `;
+        btn.addEventListener('click', onFlip);
+        btn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); onFlip.call(btn, e); }});
+        cell.appendChild(btn); board.appendChild(cell);
+      });
+    }
+
+    function onFlip(){
+      if(lock) return; const btn = this; const i = +btn.dataset.index; const card = deck[i];
+      if(btn.classList.contains('matched') || btn.classList.contains('is-flipped')) return;
+      startTimer();
+      btn.classList.add('is-flipped'); btn.setAttribute('aria-pressed','true');
+      if(!first){ first = {btn, card}; return; }
+      if(first && btn===first.btn) return; // mismo click
+      second = {btn, card}; lock=true; moves++; movesEl.textContent=moves;
+
+      // Comparar por src (par)
+      if(first.card.src === second.card.src){
+        setTimeout(()=>{
+          first.btn.classList.add('matched'); second.btn.classList.add('matched');
+          first.btn.disabled = true; second.btn.disabled = true; // ya no interactúan
+          first=null; second=null; lock=false; matches+=1;
+          // ¿se completó todo?
+          const totalPairs = Math.floor((GRID * ROWS) / 2);
+          if(matches === totalPairs){
+            stopTimer(); setTimeout(onWin, 350);
+          }
+        }, 280);
+      } else {
+        setTimeout(()=>{
+          first.btn.classList.remove('is-flipped'); second.btn.classList.remove('is-flipped');
+          first.btn.setAttribute('aria-pressed','false'); second.btn.setAttribute('aria-pressed','false');
+          first=null; second=null; lock=false;
+        }, 650);
+      }
+    }
+
+    function onWin(){
+      confetti({count:220, spread:140, duration:1600});
+      $('#nombre2').textContent = NOMBRE_DESTINO;
+      Modal.open('win-modal', $('#restart'));
+    }
+
+    function restart(){ resetStats(); renderBoard(); }
+
+    /* =====================================================
+       🎬 VIDEO CONTROL (MP4 local + fullscreen)
+       ===================================================== */
+    const localVideo = document.getElementById('localVideo');
+
+    async function openVideo(opener){
+      // Asegura la fuente del vídeo
+      if(localVideo.getAttribute('src') !== VIDEO_SRC){
+        localVideo.src = VIDEO_SRC;
+      }
+      // Abre el modal primero (gesto de usuario presente)
+      Modal.open('video-modal', opener);
+
+      // Intenta pantalla completa + reproducir
+      try{
+        if(localVideo.requestFullscreen){
+          await localVideo.requestFullscreen();
+        } else if(localVideo.webkitRequestFullscreen){
+          localVideo.webkitRequestFullscreen();
+        }
+        await localVideo.play();
+      }catch(err){
+        // Si el navegador bloquea algo, al menos mostramos el modal y los controles
+        console.warn('No se pudo activar fullscreen o autoplay:', err);
+      }
+    }
+
+    function closeVideo(){
+      // Pausa y reinicia
+      try{ localVideo.pause(); localVideo.currentTime = 0; }catch{ }
+      // Salir de fullscreen si está activo
+      if(document.fullscreenElement){
+        document.exitFullscreen().catch(()=>{});
+      }
+      Modal.close('video-modal');
+    }
+
+    /* =====================================================
+       🔌 BINDINGS + INIT
+       ===================================================== */
+    function init(){
+      $('#nombre').textContent = NOMBRE_DESTINO; $('#nombre2').textContent = NOMBRE_DESTINO;
+      renderBoard(); resetStats();
+      restartBtn.addEventListener('click', ()=>{ restart(); });
+      $('#btn-open-video').addEventListener('click', (e)=> openVideo(e.currentTarget));
+      $('.backdrop[data-close="video"]').addEventListener('click', closeVideo);
+      $('[data-close="video"]').addEventListener('click', closeVideo);
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
